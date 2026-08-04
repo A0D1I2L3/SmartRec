@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { config } from '../config.js'
 
-export function createHealthRouter({ limits, catalogSize }) {
+export function createHealthRouter({ cache, catalogSize }) {
   const router = Router()
 
   router.get('/', (req, res) => {
@@ -17,10 +17,8 @@ export function createHealthRouter({ limits, catalogSize }) {
     res.json({
       status: 'ok',
       env: config.env,
-      liveSearchConfigured: Boolean(config.serpApiKey),
       catalogSize,
-      limits: limits.stats(),
-      cache: { ttlMinutes: config.cacheTtlMs / 60000 },
+      cache: cache.stats(),
     })
   })
 

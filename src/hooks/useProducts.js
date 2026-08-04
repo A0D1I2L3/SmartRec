@@ -6,10 +6,7 @@ const initialState = {
   products: [],
   error: '',
   fetchedAt: '',
-  mode: 'live',
   parsed: null,
-  quota: null,
-  fallback: false,
 }
 
 export function useProducts(query) {
@@ -25,10 +22,7 @@ export function useProducts(query) {
           products: payload.products,
           error: '',
           fetchedAt: payload.fetchedAt,
-          mode: payload.mode,
           parsed: payload.parsed,
-          quota: payload.quota,
-          fallback: Boolean(payload.fallback),
         }),
       )
       .catch(error => {

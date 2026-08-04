@@ -7,10 +7,7 @@ export const config = {
   env,
   isProd: env === 'production',
   port,
-  serpApiKey: process.env.PRODUCT_SEARCH_API_KEY || '',
   cacheTtlMs: 5 * 60 * 1000,
-  monthlyFreeLimit: 250,
-  serpApiTimeoutMs: 10000,
   catalogFile: process.env.CATALOG_FILE || 'laptop.csv',
   dataDir: process.env.DATA_DIR || '.data',
 }

@@ -6,7 +6,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - PRODUCT_SEARCH_API_KEY=${PRODUCT_SEARCH_API_KEY:-}
     volumes:
       - smartrec-data:/app/.data
     restart: unless-stopped

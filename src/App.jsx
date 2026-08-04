@@ -72,7 +72,6 @@ export default function App() {
     <main className={home ? 'home' : 'results'}>
       <Header
         home={home}
-        state={state}
         favoriteCount={favorites.length}
         onHome={goHome}
         onShowFavorites={() => setShowFavorites(true)}
@@ -97,7 +96,6 @@ export default function App() {
             error={state.error}
             products={state.products}
             submitted={submitted}
-            mode={state.mode}
           />
 
           {state.loading ? (
@@ -127,8 +125,7 @@ export default function App() {
                 ))}
               </div>
               <p className="source-note">
-                {state.mode === 'live' ? 'Live results' : 'Catalog results'} ·{' '}
-                {state.fetchedAt && new Date(state.fetchedAt).toLocaleString('en-IN')}
+                Catalog results · {state.fetchedAt && new Date(state.fetchedAt).toLocaleString('en-IN')}
               </p>
             </>
           ) : (

@@ -1,8 +1,8 @@
 # SmartRec
 
-**Describe what you need. Get tech that fits — ranked against your budget, brand, and use-case — from live India listings and a built-in laptop catalog.**
+**Describe what you need. Get tech that fits — ranked against your budget, brand, and use-case — from a built-in laptop catalog.**
 
-SmartRec is a full-stack product-recommendation app. A natural-language parser understands queries like _"samsung phones under 10k"_ or _"laptop for coding under 40k"_, a scoring engine explains _why_ each pick fits, and a resilient provider layer keeps it demo-able even without a paid API key.
+SmartRec is a full-stack product-recommendation app. A natural-language parser understands queries like _"samsung phones under 10k"_ or _"laptop for coding under 40k"_, and a scoring engine explains _why_ each pick fits. All results are served from a local, offline catalog — there is no external API dependency.
 
 ---
 
@@ -10,11 +10,10 @@ SmartRec is a full-stack product-recommendation app. A natural-language parser u
 
 - 🧠 **Natural-language search** — budget (`under 40k`, `₹45,000`, `around 1 lakh`), brand, device type, and use-case intent (coding, gaming, photography, teaching, battery, student, travel) parsed server-side.
 - 🎯 **Explainable scoring** — every product carries a human-readable _"Why SmartRec picked this"_ reason derived from matched specs.
-- 🔌 **Resilient provider chain** — live SerpApi Google Shopping results → in-memory cache → offline 920-laptop catalog fallback. No key, no quota, no problem.
-- 🔒 **Free-tier guardian** — caps upstream calls at 250/month, persists usage to disk so restarts can't cheat, and auto-falls back to the catalog when the quota is spent.
+- 📦 **Offline-only, zero external dependencies** — every search is served from the bundled `laptop.csv` catalog, in-memory. No API key, no quota, no network call, no cost.
 - ⚖️ **Compare mode** — side-by-side spec comparison for up to 3 picks.
 - 🔖 **Saved products** — localStorage-backed favorites.
-- 🧪 **Tested** — 38 unit, integration, and component tests across parser, scoring, catalog, API, and UI.
+- 🧪 **Tested** — unit, integration, and component tests across parser, scoring, catalog, API, and UI.
 - 📱 **Mobile responsive** — fluid grid, touch targets, and reduced-motion support.
 
 ## Architecture
@@ -29,23 +28,23 @@ SmartRec is a full-stack product-recommendation app. A natural-language parser u
 ┌──────────────────────────▼─────────────────────────────────┐
 │  Express API (server/)                                     │
 │  ┌───────────┐   ┌────────────┐   ┌────────────────────┐  │
-│  │  parse    │ → │   score    │ → │   provider chain   │  │
-│  │ query.js  │   │ scoring.js │   │  live → cache →    │  │
-│  │ NLP budget│   │ intent     │   │  catalog (csv)     │  │
-│  │ brand,type│   │ reasons    │   │  limits.js (quota) │  │
+│  │  parse    │ → │   score    │ → │   catalog search   │  │
+│  │ query.js  │   │ scoring.js │   │  in-memory cache →  │  │
+│  │ NLP budget│   │ intent     │   │  catalog (csv)      │  │
+│  │ brand,type│   │ reasons    │   │  cache.js (TTL)     │  │
 │  └───────────┘   └────────────┘   └────────────────────┘  │
 └────────────────────────────────────────────────────────────┘
 ```
 
 ## Tech stack
 
-| Layer    | Tools                                                                                 |
-| -------- | ------------------------------------------------------------------------------------- |
-| Frontend | React 19, Vite, Tailwind CSS 4, lucide-react                                          |
-| Backend  | Node.js, Express 5, Helmet (security headers)                                         |
-| Data     | SerpApi Google Shopping, in-memory LRU cache, disk-backed quota, `laptop.csv` catalog |
-| Quality  | Vitest, Testing Library, Supertest, ESLint, Prettier                                  |
-| Ops      | Docker, docker-compose, GitHub Actions CI                                             |
+| Layer    | Tools                                                     |
+| -------- | ---------------------------------------------------------- |
+| Frontend | React 19, Vite, Tailwind CSS 4, lucide-react               |
+| Backend  | Node.js, Express 5, Helmet (security headers)              |
+| Data     | In-memory TTL cache, `laptop.csv` offline catalog          |
+| Quality  | Vitest, Testing Library, Supertest, ESLint, Prettier       |
+| Ops      | Docker, docker-compose, GitHub Actions CI                  |
 
 ## Getting started
 
@@ -53,13 +52,12 @@ SmartRec is a full-stack product-recommendation app. A natural-language parser u
 
 - Node.js 20+
 - [pnpm](https://pnpm.io)
-- A free [SerpApi](https://serpapi.com) key _(optional — see below)_
 
 ### Run locally
 
 ```bash
 # 1. configure the environment
-cp .env.example .env        # then paste your SerpApi key into PRODUCT_SEARCH_API_KEY
+cp .env.example .env
 
 # 2. install & start
 pnpm install
@@ -68,12 +66,11 @@ pnpm dev                    # API on :3001, Vite on :5173
 
 Open http://localhost:5173 and search:
 
-- `samsung phones under 10k`
 - `laptop for coding under 40k`
-- `xiaomi tablet around 25k for students`
 - `₹45,000 gaming laptop with 16gb ram`
+- `lightweight laptop for travel around 60k`
 
-> **No SerpApi key?** SmartRec runs fully on the offline catalog — search still works, results just come from the 920-laptop dataset instead of live listings.
+> **Note:** search is currently scoped to the `laptop.csv` catalog only. Non-laptop queries (phones, tablets, accessories) will return no matches until the catalog is expanded — see the note in the improvements report about this being a known limitation, not a bug.
 
 ### Production
 
@@ -144,11 +141,10 @@ Example response:
 │   ├── index.js       bootstrap
 │   ├── config.js      environment validation
 │   ├── logger.js      structured logging
-│   ├── limits.js      cache + persisted monthly quota
+│   ├── cache.js       in-memory TTL cache for repeated queries
 │   ├── query.js       NLP parser & matcher
 │   ├── scoring.js     intent scoring + reasons
 │   ├── catalog.js     RFC4180 CSV loader
-│   ├── serp.js        live provider client
 │   └── routes/        products + health routers
 ├── src/               React frontend
 │   ├── App.jsx
@@ -156,7 +152,7 @@ Example response:
 │   ├── hooks/         useProducts, useFavorites
 │   └── utils/         money formatter
 ├── test/              unit, API, and component tests
-├── laptop.csv         920-entry India laptop dataset (catalog fallback)
+├── laptop.csv         920-entry India laptop dataset (sole product source)
 └── docker-compose.yml, Dockerfile, .github/workflows/ci.yml
 ```
 

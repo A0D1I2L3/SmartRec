@@ -1,10 +1,8 @@
 import { Router } from 'express'
-import { config } from '../config.js'
 import { logger } from '../logger.js'
 import { parseQuery, matchProduct } from '../query.js'
 import { reasonFor, sortProducts } from '../scoring.js'
 import { constraintScore, evaluateConstraints } from '../features.js'
-import { normalizeLiveResult, searchShopping } from '../serp.js'
 
 function enrich(product, parsed) {
   const matchResult = evaluateConstraints(product, parsed.features, parsed.maxPrice)
@@ -22,7 +20,7 @@ function searchCatalog(catalog, parsed) {
   return { products, parsed, fetchedAt: new Date().toISOString(), mode: 'catalog' }
 }
 
-export function createProductsRouter({ limits, catalog }) {
+export function createProductsRouter({ cache, catalog }) {
   const router = Router()
 
   router.get('/', async (req, res) => {
@@ -32,43 +30,13 @@ export function createProductsRouter({ limits, catalog }) {
     const parsed = parseQuery(query)
     const key = parsed.text
 
-    const cached = limits.getCache(key)
+    const cached = cache.getCache(key)
     if (cached) return res.json({ ...cached, cached: true })
 
-    const remaining = limits.remainingThisMonth()
-    if (!config.serpApiKey) {
-      logger.info('No SerpApi key configured — serving offline catalog', { query })
-      return res.json({ ...searchCatalog(catalog, parsed), cached: false, quota: { unconfigured: true } })
-    }
-    if (remaining <= 0) {
-      logger.info('Monthly live-search quota exhausted — serving offline catalog', { query })
-      return res.json({
-        ...searchCatalog(catalog, parsed),
-        cached: false,
-        quota: { exhausted: true, ...limits.stats() },
-      })
-    }
-
-    try {
-      const results = await searchShopping(parsed.search)
-      limits.recordUse()
-      const products = results
-        .map((item, index) => normalizeLiveResult(item, parsed, index))
-        .filter(product => product.price && matchProduct(product, parsed))
-      const ranked = sortProducts(products.map(product => enrich(product, parsed)), parsed, p => p.constraintScore || 0)
-      const data = {
-        products: ranked,
-        parsed,
-        fetchedAt: new Date().toISOString(),
-        mode: 'live',
-        quota: limits.stats(),
-      }
-      limits.setCache(key, data)
-      return res.json({ ...data, cached: false })
-    } catch (error) {
-      logger.warn('Live search failed — falling back to offline catalog', { query, message: error.message })
-      return res.json({ ...searchCatalog(catalog, parsed), cached: false, mode: 'catalog', fallback: true })
-    }
+    logger.debug('Serving offline catalog', { query })
+    const data = searchCatalog(catalog, parsed)
+    cache.setCache(key, data)
+    return res.json({ ...data, cached: false })
   })
 
   return router

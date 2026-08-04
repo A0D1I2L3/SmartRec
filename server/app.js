@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { config } from './config.js'
 import { logger } from './logger.js'
-import { createLimits } from './limits.js'
+import { createCache } from './cache.js'
 import { loadCatalog } from './catalog.js'
 import { createProductsRouter } from './routes/products.js'
 import { createHealthRouter } from './routes/health.js'
@@ -12,7 +12,7 @@ import { createHealthRouter } from './routes/health.js'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 export function createApp({
-  limits = createLimits({ ttlMs: config.cacheTtlMs, monthlyLimit: config.monthlyFreeLimit }),
+  cache = createCache({ ttlMs: config.cacheTtlMs }),
   catalog = loadCatalog(),
 } = {}) {
   const app = express()
@@ -44,8 +44,8 @@ export function createApp({
     next()
   })
 
-  app.use('/api/products', createProductsRouter({ limits, catalog }))
-  app.use('/api/health', createHealthRouter({ limits, catalogSize: catalog.length }))
+  app.use('/api/products', createProductsRouter({ cache, catalog }))
+  app.use('/api/health', createHealthRouter({ cache, catalogSize: catalog.length }))
   app.use('/api', (req, res) => res.status(404).json({ error: 'Unknown API route.' }))
 
   app.use(express.static(path.join(root, 'dist')))
